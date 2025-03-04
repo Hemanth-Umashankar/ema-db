@@ -87,7 +87,42 @@ app.post('/api/customers', async (req, res) => {
 });
 
 
+app.post('/api/bookings/complete', async (req, res) => {
+    try {
+        const { bookingId } = req.body;
 
+        if (!bookingId) {
+            return res.status(400).json({ error: "Booking ID is required" });
+        }
+
+        // Find the booking where `_id` matches and `isDone` is false
+        const booking = await Booking.findOne({ _id: bookingId, isDone: false });
+
+        if (!booking) {
+            return res.status(404).json({ error: "Booking not found or already completed" });
+        }
+        console.log(booking)
+        const vehicle = await Vehicle.findOne({ vehicle_number: booking.vehicle });
+
+        if (!vehicle) {
+            return res.status(404).json({ error: "Vehicle not found" });
+        }
+
+        //Update `isAvailable` to true in the vehicle
+        vehicle.isAvailable = true;
+        await vehicle.save();
+
+        // Update `end_time` to the current timestamp and `isDone` to true
+        booking.end_time = new Date(); // Current timestamp
+        booking.isDone = true;
+        await booking.save();
+
+        res.status(200).json({ message: "Booking marked as completed", data: booking });
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
 
 app.listen(PORT, () => {
