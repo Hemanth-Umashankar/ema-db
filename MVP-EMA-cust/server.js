@@ -26,14 +26,26 @@ app.get('/', (req, res) => {
 app.get('/api/customer/list/bookings', async(req, res) => {
 
     try {
-        const bookings = await Booking.find();
-        res.json(bookings);
+        const { customerId } = req.query; // Get customerId from query params
+
+        if (!customerId) {
+            return res.status(400).json({ error: "Customer ID is required" });
+        }
+
+        // Query bookings where customer matches and isDone & isApproved are false
+        const bookings = await Booking.find({
+            customer: customerId,
+            isDone: false,
+            isApproved: false
+        });
+
+        res.status(200).json(bookings);
+
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
-    
-});
 
+});
 
 
 app.post('/api/customer/vehicles', async (req, res) => {
@@ -123,6 +135,34 @@ app.post('/api/bookings/complete', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
+
+app.post('/api/bookings/approve', async (req, res) => {
+    try {
+        const { bookingId } = req.body; // Get bookingId from request body
+
+        if (!bookingId) {
+            return res.status(400).json({ error: "Booking ID is required" });
+        }
+
+        // Find and update the booking to set isApproved = true
+        const updatedBooking = await Booking.findOneAndUpdate(
+            { _id: bookingId }, // Find by bookingId
+            { $set: { isApproved: true } }, // Update isApproved field to true
+            { new: true } // Return updated document
+        );
+
+        if (!updatedBooking) {
+            return res.status(404).json({ error: "Booking not found" });
+        }
+
+        res.status(200).json({ message: "Booking approved successfully", data: updatedBooking });
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 
 
 app.listen(PORT, () => {
